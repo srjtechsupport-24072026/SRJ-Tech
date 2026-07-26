@@ -1,5 +1,12 @@
+const dns = require('dns');
 const nodemailer = require('nodemailer');
 const Company = require('../models/Company');
+
+// Render free instances often cannot reach Gmail over IPv6
+// (ENETUNREACH 2607:f8b0:...:587). Prefer IPv4 for all DNS lookups.
+if (typeof dns.setDefaultResultOrder === 'function') {
+  dns.setDefaultResultOrder('ipv4first');
+}
 
 const SMTP_CONNECT_TIMEOUT_MS = Number(process.env.SMTP_CONNECT_TIMEOUT_MS || 12000);
 const SMTP_SOCKET_TIMEOUT_MS = Number(process.env.SMTP_SOCKET_TIMEOUT_MS || 15000);
@@ -20,6 +27,11 @@ function createTransport() {
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
     port,
     secure,
+    // Force IPv4 — Render free tier cannot reach smtp.gmail.com via IPv6.
+    family: 4,
+    lookup(hostname, options, callback) {
+      dns.lookup(hostname, { ...options, family: 4, all: false }, callback);
+    },
     auth: {
       user: process.env.SMTP_USER,
       // Gmail app passwords are often pasted with spaces; strip them.
@@ -31,6 +43,7 @@ function createTransport() {
     tls: {
       // Avoid hanging forever on TLS negotiation quirks from some hosts
       minVersion: 'TLSv1.2',
+      servername: process.env.SMTP_HOST || 'smtp.gmail.com',
     },
   });
 }
