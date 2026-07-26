@@ -113,10 +113,15 @@ function buildBodies(inquiry) {
  */
 async function sendViaResend(inquiry) {
   const inbox = await resolveInbox();
-  const from =
-    process.env.MAIL_FROM ||
+  // Resend rejects unverified domains (e.g. @gmail.com). Until a custom
+  // domain is verified, always send from their onboarding address.
+  const configuredFrom =
     process.env.RESEND_FROM ||
+    process.env.MAIL_FROM ||
     'SRJ Tech Website <onboarding@resend.dev>';
+  const from = /@gmail\.com>?$/i.test(configuredFrom)
+    ? 'SRJ Tech Website <onboarding@resend.dev>'
+    : configuredFrom;
   const { subjectLine, textBody, htmlBody, autoReplyText, autoReplyHtml } =
     buildBodies(inquiry);
 
