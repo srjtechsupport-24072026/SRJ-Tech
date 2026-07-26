@@ -45,17 +45,26 @@ Render → **New Web Service** → connect the GitHub repo.
 | Key | Example / notes |
 |-----|-----------------|
 | `MONGODB_URI` | Atlas connection string |
-| `CORS_ORIGIN` | `https://srj-tech-website.onrender.com` |
+| `CORS_ORIGIN` | `https://srj-tech.onrender.com` |
 | `ALLOW_RENDER_HOSTING` | `true` — also allows any `*.onrender.com` origin |
-| `SMTP_HOST` | `smtp.gmail.com` |
-| `SMTP_PORT` | `587` (prefer STARTTLS; `465` can hang from some cloud networks) |
-| `SMTP_SECURE` | `false` when using port `587` |
+| `RESEND_API_KEY` | From https://resend.com (**required on Render** — Gmail SMTP is blocked/unreachable) |
+| `RESEND_FROM` | `SRJ Tech Website <onboarding@resend.dev>` until you verify a domain |
+| `SMTP_HOST` | `smtp.gmail.com` (local/dev only) |
+| `SMTP_PORT` | `587` |
+| `SMTP_SECURE` | `false` |
 | `SMTP_USER` | `srjtechsupport@gmail.com` |
-| `SMTP_PASS` | Gmail App Password (spaces optional; stripped automatically) |
-| `MAIL_FROM` | `SRJ Tech Website <srjtechsupport@gmail.com>` |
+| `SMTP_PASS` | Gmail App Password (works locally; fails from Render) |
+| `MAIL_FROM` | `SRJ Tech Website <onboarding@resend.dev>` |
 | `MAIL_TO` | `srjtechsupport@gmail.com` |
 | `MAIL_AUTO_REPLY` | `true` |
 | `NODE_ENV` | `production` |
+
+> **Email on Render:** free instances cannot reach Gmail SMTP
+> (`ENETUNREACH` / connection timeout). Use [Resend](https://resend.com):
+> 1. Sign up with `srjtechsupport@gmail.com`
+> 2. API Keys → Create → paste into Render as `RESEND_API_KEY`
+> 3. Set `MAIL_TO=srjtechsupport@gmail.com` and redeploy
+> 4. Submit the contact form again — you should get the email
 
 Verify:
 

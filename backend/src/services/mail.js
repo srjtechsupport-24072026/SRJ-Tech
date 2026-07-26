@@ -2,8 +2,8 @@ const dns = require('dns');
 const nodemailer = require('nodemailer');
 const Company = require('../models/Company');
 
-// Render free instances often cannot reach Gmail over IPv6
-// (ENETUNREACH 2607:f8b0:...:587). Prefer IPv4 for all DNS lookups.
+// Prefer IPv4 when SMTP is used. Render free instances often cannot
+// reach Gmail over IPv6 (ENETUNREACH 2607:f8b0:...:587).
 if (typeof dns.setDefaultResultOrder === 'function') {
   dns.setDefaultResultOrder('ipv4first');
 }
@@ -12,40 +12,16 @@ const SMTP_CONNECT_TIMEOUT_MS = Number(process.env.SMTP_CONNECT_TIMEOUT_MS || 12
 const SMTP_SOCKET_TIMEOUT_MS = Number(process.env.SMTP_SOCKET_TIMEOUT_MS || 15000);
 const SMTP_TOTAL_TIMEOUT_MS = Number(process.env.SMTP_TOTAL_TIMEOUT_MS || 20000);
 
+function isResendConfigured() {
+  return Boolean(process.env.RESEND_API_KEY);
+}
+
 function isSmtpConfigured() {
   return Boolean(process.env.SMTP_USER && process.env.SMTP_PASS);
 }
 
-function createTransport() {
-  const port = Number(process.env.SMTP_PORT || 465);
-  const secure =
-    process.env.SMTP_SECURE !== undefined
-      ? process.env.SMTP_SECURE === 'true'
-      : port === 465;
-
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port,
-    secure,
-    // Force IPv4 — Render free tier cannot reach smtp.gmail.com via IPv6.
-    family: 4,
-    lookup(hostname, options, callback) {
-      dns.lookup(hostname, { ...options, family: 4, all: false }, callback);
-    },
-    auth: {
-      user: process.env.SMTP_USER,
-      // Gmail app passwords are often pasted with spaces; strip them.
-      pass: String(process.env.SMTP_PASS || '').replace(/\s+/g, ''),
-    },
-    connectionTimeout: SMTP_CONNECT_TIMEOUT_MS,
-    greetingTimeout: SMTP_CONNECT_TIMEOUT_MS,
-    socketTimeout: SMTP_SOCKET_TIMEOUT_MS,
-    tls: {
-      // Avoid hanging forever on TLS negotiation quirks from some hosts
-      minVersion: 'TLSv1.2',
-      servername: process.env.SMTP_HOST || 'smtp.gmail.com',
-    },
-  });
+function isMailConfigured() {
+  return isResendConfigured() || isSmtpConfigured();
 }
 
 function withTimeout(promise, ms, label) {
@@ -77,25 +53,7 @@ async function resolveInbox() {
   return company?.email || process.env.SMTP_USER;
 }
 
-/**
- * Sends website inquiry to company inbox and optional auto-reply to visitor.
- * Always fails fast on SMTP issues so the API never hangs waiting for Gmail.
- */
-async function sendContactInquiryEmail(inquiry) {
-  if (!isSmtpConfigured()) {
-    const error = new Error(
-      'Email is not configured. Set SMTP_USER and SMTP_PASS on the API service.'
-    );
-    error.code = 'SMTP_NOT_CONFIGURED';
-    throw error;
-  }
-
-  const transporter = createTransport();
-  const inbox = await resolveInbox();
-  const from =
-    process.env.MAIL_FROM ||
-    `"SRJ Tech Website" <${process.env.SMTP_USER}>`;
-
+function buildBodies(inquiry) {
   const subjectLine =
     inquiry.subject?.trim() ||
     `New ${inquiry.inquiryType || 'general'} inquiry from ${inquiry.name}`;
@@ -129,59 +87,205 @@ async function sendContactInquiryEmail(inquiry) {
     </div>
   `;
 
-  const sendAll = async () => {
-    // Fail early if the SMTP server is unreachable / blocked
-    await transporter.verify();
+  const autoReplyText = [
+    `Hi ${inquiry.name},`,
+    '',
+    'Thanks for contacting SRJ Tech. We received your message and will get back to you soon.',
+    '',
+    '— SRJ Tech Team',
+    'srjtechsupport@gmail.com',
+  ].join('\n');
 
-    const companyMail = await transporter.sendMail({
+  const autoReplyHtml = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111;">
+      <p>Hi ${escapeHtml(inquiry.name)},</p>
+      <p>Thanks for contacting <strong>SRJ Tech</strong>. We received your message and will get back to you soon.</p>
+      <p>— SRJ Tech Team<br/>srjtechsupport@gmail.com</p>
+    </div>
+  `;
+
+  return { subjectLine, textBody, htmlBody, autoReplyText, autoReplyHtml };
+}
+
+/**
+ * HTTPS email provider — works on Render free (SMTP ports often time out).
+ * https://resend.com
+ */
+async function sendViaResend(inquiry) {
+  const inbox = await resolveInbox();
+  const from =
+    process.env.MAIL_FROM ||
+    process.env.RESEND_FROM ||
+    'SRJ Tech Website <onboarding@resend.dev>';
+  const { subjectLine, textBody, htmlBody, autoReplyText, autoReplyHtml } =
+    buildBodies(inquiry);
+
+  const sendOne = async (payload) => {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(
+        body.message || body.name || `Resend HTTP ${response.status}`
+      );
+      error.code = 'RESEND_ERROR';
+      error.status = response.status;
+      throw error;
+    }
+    return body;
+  };
+
+  const companyMail = await withTimeout(
+    sendOne({
       from,
-      to: inbox,
-      replyTo: inquiry.email,
+      to: [inbox],
+      reply_to: inquiry.email,
       subject: `[SRJ Tech] ${subjectLine}`,
       text: textBody,
       html: htmlBody,
-    });
+    }),
+    SMTP_TOTAL_TIMEOUT_MS,
+    'Resend send'
+  );
 
-    let autoReplyId = null;
-    if (process.env.MAIL_AUTO_REPLY !== 'false') {
-      const autoReply = await transporter.sendMail({
-        from,
-        to: inquiry.email,
-        subject: 'We received your message — SRJ Tech',
-        text: [
-          `Hi ${inquiry.name},`,
-          '',
-          'Thanks for contacting SRJ Tech. We received your message and will get back to you soon.',
-          '',
-          '— SRJ Tech Team',
-          'srjtechsupport@gmail.com',
-        ].join('\n'),
-        html: `
-          <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111;">
-            <p>Hi ${escapeHtml(inquiry.name)},</p>
-            <p>Thanks for contacting <strong>SRJ Tech</strong>. We received your message and will get back to you soon.</p>
-            <p>— SRJ Tech Team<br/>srjtechsupport@gmail.com</p>
-          </div>
-        `,
-      });
-      autoReplyId = autoReply.messageId;
+  let autoReplyId = null;
+  if (process.env.MAIL_AUTO_REPLY !== 'false') {
+    try {
+      const autoReply = await withTimeout(
+        sendOne({
+          from,
+          to: [inquiry.email],
+          subject: 'We received your message — SRJ Tech',
+          text: autoReplyText,
+          html: autoReplyHtml,
+        }),
+        SMTP_TOTAL_TIMEOUT_MS,
+        'Resend auto-reply'
+      );
+      autoReplyId = autoReply.id || null;
+    } catch (autoReplyError) {
+      // Inbox notification matters more than visitor auto-reply.
+      console.warn('Resend auto-reply skipped:', autoReplyError.message);
     }
+  }
 
-    return {
-      to: inbox,
-      messageId: companyMail.messageId,
-      autoReplyId,
-    };
+  return {
+    provider: 'resend',
+    to: inbox,
+    messageId: companyMail.id || '',
+    autoReplyId,
   };
+}
+
+async function createSmtpTransport() {
+  const hostname = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const port = Number(process.env.SMTP_PORT || 587);
+  const secure =
+    process.env.SMTP_SECURE !== undefined
+      ? process.env.SMTP_SECURE === 'true'
+      : port === 465;
+
+  // Resolve to a literal IPv4 address so nodemailer cannot fall back to IPv6.
+  const { address } = await dns.promises.lookup(hostname, { family: 4 });
+
+  return nodemailer.createTransport({
+    host: address,
+    port,
+    secure,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: String(process.env.SMTP_PASS || '').replace(/\s+/g, ''),
+    },
+    connectionTimeout: SMTP_CONNECT_TIMEOUT_MS,
+    greetingTimeout: SMTP_CONNECT_TIMEOUT_MS,
+    socketTimeout: SMTP_SOCKET_TIMEOUT_MS,
+    tls: {
+      minVersion: 'TLSv1.2',
+      servername: hostname,
+    },
+  });
+}
+
+async function sendViaSmtp(inquiry) {
+  const transporter = await createSmtpTransport();
+  const inbox = await resolveInbox();
+  const from =
+    process.env.MAIL_FROM ||
+    `"SRJ Tech Website" <${process.env.SMTP_USER}>`;
+  const { subjectLine, textBody, htmlBody, autoReplyText, autoReplyHtml } =
+    buildBodies(inquiry);
 
   try {
-    return await withTimeout(sendAll(), SMTP_TOTAL_TIMEOUT_MS, 'SMTP send');
+    return await withTimeout(
+      (async () => {
+        await transporter.verify();
+
+        const companyMail = await transporter.sendMail({
+          from,
+          to: inbox,
+          replyTo: inquiry.email,
+          subject: `[SRJ Tech] ${subjectLine}`,
+          text: textBody,
+          html: htmlBody,
+        });
+
+        let autoReplyId = null;
+        if (process.env.MAIL_AUTO_REPLY !== 'false') {
+          const autoReply = await transporter.sendMail({
+            from,
+            to: inquiry.email,
+            subject: 'We received your message — SRJ Tech',
+            text: autoReplyText,
+            html: autoReplyHtml,
+          });
+          autoReplyId = autoReply.messageId;
+        }
+
+        return {
+          provider: 'smtp',
+          to: inbox,
+          messageId: companyMail.messageId,
+          autoReplyId,
+        };
+      })(),
+      SMTP_TOTAL_TIMEOUT_MS,
+      'SMTP send'
+    );
   } finally {
     transporter.close();
   }
 }
 
+/**
+ * Sends website inquiry to company inbox and optional auto-reply to visitor.
+ * Prefers Resend (HTTPS) on Render; falls back to SMTP for local/dev.
+ */
+async function sendContactInquiryEmail(inquiry) {
+  if (!isMailConfigured()) {
+    const error = new Error(
+      'Email is not configured. Set RESEND_API_KEY (recommended on Render) or SMTP_USER/SMTP_PASS.'
+    );
+    error.code = 'SMTP_NOT_CONFIGURED';
+    throw error;
+  }
+
+  if (isResendConfigured()) {
+    return sendViaResend(inquiry);
+  }
+
+  return sendViaSmtp(inquiry);
+}
+
 module.exports = {
   isSmtpConfigured,
+  isResendConfigured,
+  isMailConfigured,
   sendContactInquiryEmail,
 };
