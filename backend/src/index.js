@@ -3,7 +3,8 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
-const { connectDB } = require('./config/db');
+const mongoose = require('mongoose');
+const { connectDBWithRetry } = require('./config/db');
 
 const companyRoutes = require('./routes/company');
 const pageRoutes = require('./routes/pages');
@@ -44,7 +45,13 @@ app.use(express.json());
 app.use(morgan('dev'));
 
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', company: 'SRJ Tech', timestamp: new Date().toISOString() });
+  const dbStates = ['disconnected', 'connected', 'connecting', 'disconnecting'];
+  res.json({
+    status: 'ok',
+    company: 'SRJ Tech',
+    database: dbStates[mongoose.connection.readyState] || 'unknown',
+    timestamp: new Date().toISOString(),
+  });
 });
 
 app.use('/api/company', companyRoutes);
@@ -57,14 +64,8 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ message: 'Internal server error' });
 });
 
-async function start() {
-  await connectDB();
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`SRJ Tech API running on port ${PORT}`);
-  });
-}
-
-start().catch((error) => {
-  console.error('Failed to start server:', error);
-  process.exit(1);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`SRJ Tech API running on port ${PORT}`);
 });
+
+connectDBWithRetry();
