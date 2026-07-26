@@ -109,7 +109,7 @@ class AsyncBody<T> extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Make sure the Node.js API is running and MongoDB is seeded.',
+                  'The API may be waking up after idle time. Wait a few seconds and refresh the page.',
                   style: Theme.of(context).textTheme.bodyMedium,
                   textAlign: TextAlign.center,
                 ),

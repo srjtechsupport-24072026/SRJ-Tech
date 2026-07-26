@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -13,16 +14,72 @@ class ApiService {
 
   final http.Client _client;
 
+  /// Render free services sleep after idle time; first wake can take 30–60s.
+  static const Duration requestTimeout = Duration(seconds: 55);
+  static const int maxAttempts = 3;
+
   Uri _uri(String path) => Uri.parse('${ApiConfig.baseUrl}$path');
 
+  Future<http.Response> _get(String path) => _send(
+        () => _client.get(_uri(path)).timeout(requestTimeout),
+      );
+
+  Future<http.Response> _post(
+    String path, {
+    Map<String, String>? headers,
+    Object? body,
+  }) =>
+      _send(
+        () => _client
+            .post(_uri(path), headers: headers, body: body)
+            .timeout(requestTimeout),
+      );
+
+  Future<http.Response> _send(
+    Future<http.Response> Function() request,
+  ) async {
+    Object? lastError;
+
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        final response = await request();
+        // Retry transient gateway / cold-start failures from Render.
+        if (response.statusCode == 502 ||
+            response.statusCode == 503 ||
+            response.statusCode == 504) {
+          lastError = Exception('Request failed (${response.statusCode})');
+          if (attempt < maxAttempts) {
+            await Future<void>.delayed(Duration(seconds: attempt * 2));
+            continue;
+          }
+        }
+        return response;
+      } on TimeoutException catch (error) {
+        lastError = error;
+        if (attempt >= maxAttempts) break;
+        await Future<void>.delayed(Duration(seconds: attempt * 2));
+      } on http.ClientException catch (error) {
+        lastError = error;
+        if (attempt >= maxAttempts) break;
+        await Future<void>.delayed(Duration(seconds: attempt * 2));
+      }
+    }
+
+    throw Exception(
+      'Unable to reach SRJ Tech API after $maxAttempts attempts. '
+      'The server may be waking up — please refresh in a moment. '
+      '($lastError)',
+    );
+  }
+
   Future<Company> fetchCompany() async {
-    final response = await _client.get(_uri('/company'));
+    final response = await _get('/company');
     _ensureOk(response);
     return Company.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
   }
 
   Future<ContactDetails> fetchContactDetails() async {
-    final response = await _client.get(_uri('/contact/details'));
+    final response = await _get('/contact/details');
     _ensureOk(response);
     return ContactDetails.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
@@ -30,13 +87,13 @@ class ApiService {
   }
 
   Future<SitePage> fetchPage(String slug) async {
-    final response = await _client.get(_uri('/pages/$slug'));
+    final response = await _get('/pages/$slug');
     _ensureOk(response);
     return SitePage.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
   }
 
   Future<List<ServiceItem>> fetchServices() async {
-    final response = await _client.get(_uri('/services'));
+    final response = await _get('/services');
     _ensureOk(response);
     final list = jsonDecode(response.body) as List<dynamic>;
     return list
@@ -55,8 +112,8 @@ class ApiService {
     String inquiryType = 'general',
     String source = 'website',
   }) async {
-    final response = await _client.post(
-      _uri('/contact'),
+    final response = await _post(
+      '/contact',
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'name': name,

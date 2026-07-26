@@ -2,7 +2,7 @@ const express = require('express');
 const { body, validationResult, query } = require('express-validator');
 const Contact = require('../models/Contact');
 const Company = require('../models/Company');
-const { sendContactInquiryEmail, isSmtpConfigured } = require('../services/mail');
+const { sendContactInquiryEmail } = require('../services/mail');
 
 const router = express.Router();
 
@@ -116,6 +116,7 @@ router.post(
         source: req.body.source || 'website',
       };
 
+      // Persist first so a slow/blocked SMTP server never loses the inquiry.
       const contact = await Contact.create(payload);
 
       let emailDelivered = false;
@@ -134,23 +135,18 @@ router.post(
         emailWarning =
           mailError.code === 'SMTP_NOT_CONFIGURED'
             ? 'Message saved, but email delivery is not configured on the server.'
-            : 'Message saved, but email delivery failed. Please try again or email us directly.';
+            : mailError.code === 'SMTP_TIMEOUT'
+              ? 'Message saved, but email delivery timed out. Our team can still see it in the inbox database.'
+              : 'Message saved, but email delivery failed. Please try again or email us directly.';
 
         await Contact.findByIdAndUpdate(contact._id, {
           emailDelivered: false,
           emailError: mailError.message,
         });
-
-        // If SMTP is configured but send fails, treat as error for the user
-        if (isSmtpConfigured()) {
-          return res.status(502).json({
-            message: emailWarning,
-            id: contact._id,
-            emailDelivered: false,
-          });
-        }
       }
 
+      // Always acknowledge the saved inquiry. Email is best-effort so the
+      // website never hangs when Gmail/SMTP is unreachable from Render.
       res.status(201).json({
         message: emailDelivered
           ? 'Thanks for reaching out. Your message was sent to our team.'

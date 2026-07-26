@@ -48,10 +48,10 @@ Render → **New Web Service** → connect the GitHub repo.
 | `CORS_ORIGIN` | `https://srj-tech-website.onrender.com` |
 | `ALLOW_RENDER_HOSTING` | `true` — also allows any `*.onrender.com` origin |
 | `SMTP_HOST` | `smtp.gmail.com` |
-| `SMTP_PORT` | `465` |
-| `SMTP_SECURE` | `true` |
+| `SMTP_PORT` | `587` (prefer STARTTLS; `465` can hang from some cloud networks) |
+| `SMTP_SECURE` | `false` when using port `587` |
 | `SMTP_USER` | `srjtechsupport@gmail.com` |
-| `SMTP_PASS` | Gmail App Password |
+| `SMTP_PASS` | Gmail App Password (spaces optional; stripped automatically) |
 | `MAIL_FROM` | `SRJ Tech Website <srjtechsupport@gmail.com>` |
 | `MAIL_TO` | `srjtechsupport@gmail.com` |
 | `MAIL_AUTO_REPLY` | `true` |
