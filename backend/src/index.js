@@ -30,10 +30,10 @@ app.use(
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-      // Firebase Hosting (+ preview channels)
+      // Render static site (+ PR preview subdomains)
       if (
-        process.env.ALLOW_FIREBASE_HOSTING !== 'false' &&
-        (/\.web\.app$/i.test(origin) || /\.firebaseapp\.com$/i.test(origin))
+        process.env.ALLOW_RENDER_HOSTING !== 'false' &&
+        /^https:\/\/[a-z0-9-]+(\.[a-z0-9-]+)*\.onrender\.com$/i.test(origin)
       ) {
         return callback(null, true);
       }
@@ -43,6 +43,14 @@ app.use(
 );
 app.use(express.json());
 app.use(morgan('dev'));
+
+app.get('/', (_req, res) => {
+  res.json({
+    service: 'SRJ Tech API',
+    docs: '/api/health',
+    endpoints: ['/api/company', '/api/pages', '/api/services', '/api/contact/details'],
+  });
+});
 
 app.get('/api/health', (_req, res) => {
   const dbStates = ['disconnected', 'connected', 'connecting', 'disconnecting'];

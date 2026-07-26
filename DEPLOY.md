@@ -1,10 +1,10 @@
 # Deploy SRJ Tech
 
-This guide deploys:
+Everything runs on [Render](https://render.com), split across two services:
 
-- **Backend** → [Render](https://render.com)
-- **Website (Flutter Web)** → [Firebase Hosting](https://firebase.google.com/docs/hosting)
-- **Database** → [MongoDB Atlas](https://www.mongodb.com/atlas) (required for Render)
+- **API** (`srj-tech-website-apis`) → Node web service
+- **Website** (`srj-tech-website`) → static site serving the Flutter web build
+- **Database** → [MongoDB Atlas](https://www.mongodb.com/atlas) (required by the API)
 
 ---
 
@@ -12,14 +12,14 @@ This guide deploys:
 
 1. Create a free cluster at https://cloud.mongodb.com
 2. Database Access → create a user (save username/password)
-3. Network Access → Add IP Address → `0.0.0.0/0` (allow Render)
+3. Network Access → Add IP Address → `0.0.0.0/0` (Render's outbound IPs are not static on the free plan)
 4. Database → Connect → Drivers → copy the URI, e.g.
 
 ```text
 mongodb+srv://USER:PASSWORD@cluster0.xxxxx.mongodb.net/srj_tech?retryWrites=true&w=majority
 ```
 
-5. Seed once (from your machine, with Atlas URI):
+5. Seed once from your machine, pointed at Atlas:
 
 ```bash
 cd backend
@@ -28,33 +28,25 @@ MONGODB_URI="mongodb+srv://USER:PASSWORD@cluster0.xxxxx.mongodb.net/srj_tech?ret
 
 ---
 
-## 2) Deploy backend to Render
+## 2) API service (Node)
 
-### Option A — Blueprint (`render.yaml`)
+Render → **New Web Service** → connect the GitHub repo.
 
-1. Push this repo to GitHub
-2. Render Dashboard → **New** → **Blueprint**
-3. Select the repo (root contains `backend/render.yaml`, or set path to `backend`)
-4. Fill secret env vars when prompted
+| Setting | Value |
+|---------|-------|
+| Root Directory | `backend` |
+| Runtime | Node |
+| Build Command | `npm install` |
+| Start Command | `npm start` |
+| Health Check Path | `/api/health` |
 
-### Option B — Web Service (manual)
-
-1. Render → **New Web Service**
-2. Connect GitHub repo
-3. Settings:
-   - **Root Directory:** `backend`
-   - **Runtime:** Node
-   - **Build Command:** `npm install`
-   - **Start Command:** `npm start`
-   - **Health Check Path:** `/api/health`
-
-### Environment variables on Render
+### Environment variables
 
 | Key | Example / notes |
 |-----|-----------------|
 | `MONGODB_URI` | Atlas connection string |
-| `CORS_ORIGIN` | `https://YOUR_PROJECT.web.app,https://YOUR_PROJECT.firebaseapp.com` |
-| `ALLOW_FIREBASE_HOSTING` | `true` |
+| `CORS_ORIGIN` | `https://srj-tech-website.onrender.com` |
+| `ALLOW_RENDER_HOSTING` | `true` — also allows any `*.onrender.com` origin |
 | `SMTP_HOST` | `smtp.gmail.com` |
 | `SMTP_PORT` | `465` |
 | `SMTP_SECURE` | `true` |
@@ -65,82 +57,77 @@ MONGODB_URI="mongodb+srv://USER:PASSWORD@cluster0.xxxxx.mongodb.net/srj_tech?ret
 | `MAIL_AUTO_REPLY` | `true` |
 | `NODE_ENV` | `production` |
 
-After deploy, copy your API URL, for example:
+Verify:
 
 ```text
-https://srj-tech-api.onrender.com
+https://srj-tech-website-apis.onrender.com/api/health
 ```
 
-Health check:
-
-```text
-https://srj-tech-api.onrender.com/api/health
-```
-
-> Free Render services can sleep after idle time; first request may be slow.
+It should report `"database": "connected"`.
 
 ---
 
-## 3) Deploy website to Firebase Hosting
+## 3) Website service (static)
 
-### One-time setup
+Render → **New Static Site** → same GitHub repo.
 
-```bash
-# From project root
-firebase login
-firebase projects:create srj-tech-web   # or use an existing project id
-```
+| Setting | Value |
+|---------|-------|
+| Root Directory | *(leave blank — repo root)* |
+| Build Command | `./scripts/render_build.sh` |
+| Publish Directory | `build/web` |
 
-Edit `.firebaserc` and set your real Firebase project id:
+Add one environment variable so the build knows where the API lives:
 
-```json
-{
-  "projects": {
-    "default": "YOUR_FIREBASE_PROJECT_ID"
-  }
-}
-```
+| Key | Value |
+|-----|-------|
+| `API_BASE_URL` | `https://srj-tech-website-apis.onrender.com/api` |
 
-Then:
+### Redirect/Rewrite rule (required)
 
-```bash
-firebase use YOUR_FIREBASE_PROJECT_ID
-```
+`go_router` uses real URL paths, so deep links like `/services` must fall back to
+the Flutter entry point. Under **Redirects/Rewrites** add:
 
-### Build + deploy
+| Source | Destination | Action |
+|--------|-------------|--------|
+| `/*` | `/index.html` | Rewrite |
 
-Replace the Render URL with yours:
+Without this, refreshing on any page other than `/` returns 404.
 
-```bash
-chmod +x scripts/deploy_firebase.sh
+### What the build script does
 
-API_BASE_URL=https://srj-tech-api.onrender.com/api ./scripts/deploy_firebase.sh
-```
+`scripts/render_build.sh` downloads the Flutter SDK (Render has no Flutter
+runtime), caches it between deploys, and runs the release build with the
+production API URL baked in. It forces the **CanvasKit** renderer because the
+HTML renderer does not support `BackdropFilter`, which the site's glassmorphism
+panels depend on.
 
-Or manually:
-
-```bash
-flutter build web --release \
-  --dart-define=API_BASE_URL=https://srj-tech-api.onrender.com/api
-
-firebase deploy --only hosting
-```
-
-Site URL will look like:
-
-```text
-https://YOUR_FIREBASE_PROJECT_ID.web.app
-```
+First deploy takes a few minutes while the SDK downloads; later deploys reuse
+the cache and are much faster.
 
 ---
 
-## 4) Final checklist
+## 4) Blueprint alternative
 
-1. Atlas seeded (`npm run seed` with Atlas URI)
-2. Render `/api/health` returns OK
-3. Render `CORS_ORIGIN` includes your Firebase URLs
-4. Flutter built with production `API_BASE_URL`
-5. Contact form sends email (SMTP vars set on Render)
+`render.yaml` at the repo root defines both services. Render Dashboard → **New**
+→ **Blueprint** → select the repo, then fill in the secret values marked
+`sync: false`. This creates the API and static site together with the rewrite
+rule and cache headers already configured.
+
+---
+
+## 5) Final checklist
+
+1. Atlas seeded and Network Access allows `0.0.0.0/0`
+2. `/api/health` reports `"database": "connected"`
+3. `CORS_ORIGIN` on the API includes the static site URL
+4. `API_BASE_URL` set on the static site before building
+5. `/*` → `/index.html` rewrite is active
+6. Contact form delivers email (SMTP vars set on the API service)
+
+> Free Render web services sleep after ~15 minutes idle, so the first API call
+> after a quiet period takes 30–60s. The static site does not sleep, so pages
+> still load instantly.
 
 ---
 
@@ -149,4 +136,10 @@ https://YOUR_FIREBASE_PROJECT_ID.web.app
 | Environment | API base |
 |-------------|----------|
 | Local | `http://localhost:5001/api` (default) |
-| Production | `--dart-define=API_BASE_URL=https://YOUR-API.onrender.com/api` |
+| Production | `--dart-define=API_BASE_URL=https://srj-tech-website-apis.onrender.com/api` |
+
+Build locally exactly the way Render does:
+
+```bash
+API_BASE_URL=https://srj-tech-website-apis.onrender.com/api ./scripts/render_build.sh
+```

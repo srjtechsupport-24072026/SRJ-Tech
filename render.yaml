@@ -1,6 +1,7 @@
 services:
+  # Node.js API
   - type: web
-    name: srj-tech-api
+    name: srj-tech-website-apis
     runtime: node
     plan: free
     rootDir: backend
@@ -14,7 +15,7 @@ services:
         sync: false
       - key: CORS_ORIGIN
         sync: false
-      - key: ALLOW_FIREBASE_HOSTING
+      - key: ALLOW_RENDER_HOSTING
         value: "true"
       - key: SMTP_HOST
         value: smtp.gmail.com
@@ -32,3 +33,32 @@ services:
         sync: false
       - key: MAIL_AUTO_REPLY
         value: "true"
+
+  # Flutter web frontend
+  - type: web
+    name: srj-tech-website
+    runtime: static
+    buildCommand: ./scripts/render_build.sh
+    staticPublishPath: build/web
+    pullRequestPreviewsEnabled: false
+    envVars:
+      - key: API_BASE_URL
+        value: https://srj-tech-website-apis.onrender.com/api
+    headers:
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+      - path: /canvaskit/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+      - path: /index.html
+        name: Cache-Control
+        value: no-cache
+      - path: /flutter_service_worker.js
+        name: Cache-Control
+        value: no-cache
+    routes:
+      # go_router uses path-based URLs, so deep links must fall back to index.html
+      - type: rewrite
+        source: /*
+        destination: /index.html

@@ -32,7 +32,7 @@ Dynamic company website for **SRJ Tech**, built with:
 
 ## Setup
 
-See **[DEPLOY.md](./DEPLOY.md)** for Render + Firebase production deploy.
+See **[DEPLOY.md](./DEPLOY.md)** for the production deploy (API + website on Render).
 
 ### 1. Start MongoDB
 
