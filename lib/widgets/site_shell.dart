@@ -131,6 +131,7 @@ class SiteHeader extends StatelessWidget {
     ('/', 'Home'),
     ('/about', 'About'),
     ('/services', 'Services'),
+    ('/projects', 'Projects'),
     ('/contact', 'Contact'),
   ];
 

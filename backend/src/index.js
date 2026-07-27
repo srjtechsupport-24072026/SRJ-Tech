@@ -9,6 +9,8 @@ const { connectDBWithRetry } = require('./config/db');
 const companyRoutes = require('./routes/company');
 const pageRoutes = require('./routes/pages');
 const serviceRoutes = require('./routes/services');
+const projectRoutes = require('./routes/projects');
+const testimonialRoutes = require('./routes/testimonials');
 const contactRoutes = require('./routes/contact');
 
 const app = express();
@@ -48,7 +50,14 @@ app.get('/', (_req, res) => {
   res.json({
     service: 'SRJ Tech API',
     docs: '/api/health',
-    endpoints: ['/api/company', '/api/pages', '/api/services', '/api/contact/details'],
+    endpoints: [
+      '/api/company',
+      '/api/pages',
+      '/api/services',
+      '/api/projects',
+      '/api/testimonials',
+      '/api/contact/details',
+    ],
   });
 });
 
@@ -65,6 +74,8 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/company', companyRoutes);
 app.use('/api/pages', pageRoutes);
 app.use('/api/services', serviceRoutes);
+app.use('/api/projects', projectRoutes);
+app.use('/api/testimonials', testimonialRoutes);
 app.use('/api/contact', contactRoutes);
 
 app.use((err, _req, res, _next) => {

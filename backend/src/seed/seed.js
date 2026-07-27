@@ -4,11 +4,19 @@ const { connectDB } = require('../config/db');
 const Company = require('../models/Company');
 const Page = require('../models/Page');
 const Service = require('../models/Service');
+const Project = require('../models/Project');
+const Testimonial = require('../models/Testimonial');
 
 async function seed() {
   await connectDB();
 
-  await Promise.all([Company.deleteMany({}), Page.deleteMany({}), Service.deleteMany({})]);
+  await Promise.all([
+    Company.deleteMany({}),
+    Page.deleteMany({}),
+    Service.deleteMany({}),
+    Project.deleteMany({}),
+    Testimonial.deleteMany({}),
+  ]);
 
   await Company.create({
     name: 'SRJ Tech',
@@ -23,7 +31,8 @@ async function seed() {
     country: 'India',
     businessHours: 'Mon – Sat, 10:00 AM – 7:00 PM IST',
     responseTime: 'We usually reply within 24 hours',
-    supportNote: 'Share your project goals, timeline, and any existing product links so we can help faster.',
+    supportNote:
+      'Share your project goals, timeline, and any existing product links so we can help faster.',
     social: {
       linkedin: 'https://linkedin.com',
       twitter: 'https://twitter.com',
@@ -85,6 +94,18 @@ async function seed() {
       ],
     },
     {
+      slug: 'projects',
+      title: 'Projects',
+      subtitle: 'Selected work from recent engagements',
+      sections: [
+        {
+          heading: 'Work that ships',
+          body: 'A look at products and platforms we have helped design, build, and launch. Replace these samples with your real case studies anytime in MongoDB.',
+          order: 1,
+        },
+      ],
+    },
+    {
       slug: 'contact',
       title: 'Contact',
       subtitle: 'Tell us what you are building',
@@ -137,7 +158,69 @@ async function seed() {
     },
   ]);
 
-  console.log('Seed complete: company, pages, and services are ready.');
+  await Project.insertMany([
+    {
+      title: 'SRJ Tech Company Website',
+      slug: 'srj-tech-website',
+      summary:
+        'Our own dynamic marketing site — Flutter Web, Node.js API, and MongoDB content.',
+      description:
+        'A living example of the stack we recommend: parallax glass UI on Flutter Web, Express APIs on Render, and editable company content in MongoDB Atlas.',
+      client: 'SRJ Tech',
+      industry: 'Software',
+      year: '2026',
+      technologies: ['Flutter Web', 'Express', 'MongoDB Atlas', 'Render'],
+      highlights: [
+        'Dynamic pages, services, projects, and testimonials',
+        'Contact inquiries with email delivery',
+        'Production deploy on Render',
+      ],
+      projectUrl: 'https://srj-tech.onrender.com',
+      order: 1,
+      featured: true,
+      published: true,
+    },
+  ]);
+
+  await Testimonial.insertMany([
+    {
+      quote:
+        'SRJ Tech turned a messy set of ideas into a product we could actually ship. Communication stayed clear and the delivery quality was excellent.',
+      authorName: 'Ananya Menon',
+      authorRole: 'Founder',
+      companyName: 'FolksShop',
+      rating: 5,
+      order: 1,
+      featured: true,
+      published: true,
+    },
+    {
+      quote:
+        'The admin suite made our clinic day much calmer. Appointments, staff, and follow-ups finally live in one place.',
+      authorName: 'Dr. Rahul Nair',
+      authorRole: 'Clinic Director',
+      companyName: 'SmileCare Dental',
+      rating: 5,
+      order: 2,
+      featured: true,
+      published: true,
+    },
+    {
+      quote:
+        'Solid engineering with a product eye. They cared about maintainability as much as the first release.',
+      authorName: 'Neha Krishnan',
+      authorRole: 'COO',
+      companyName: 'Northline Labs',
+      rating: 5,
+      order: 3,
+      featured: true,
+      published: true,
+    },
+  ]);
+
+  console.log(
+    'Seed complete: company, pages, services, projects, and testimonials are ready.'
+  );
   process.exit(0);
 }
 

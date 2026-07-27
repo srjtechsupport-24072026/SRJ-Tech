@@ -4,6 +4,7 @@ import '../../models/company.dart';
 import '../../pages/about_page.dart';
 import '../../pages/contact_page.dart';
 import '../../pages/home_page.dart';
+import '../../pages/projects_page.dart';
 import '../../pages/services_page.dart';
 import '../../services/api_service.dart';
 import '../../widgets/site_shell.dart';
@@ -43,6 +44,13 @@ GoRouter createRouter({
             pageBuilder: (context, state) => NoTransitionPage(
               key: state.pageKey,
               child: ServicesPage(api: api),
+            ),
+          ),
+          GoRoute(
+            path: '/projects',
+            pageBuilder: (context, state) => NoTransitionPage(
+              key: state.pageKey,
+              child: ProjectsPage(api: api),
             ),
           ),
           GoRoute(

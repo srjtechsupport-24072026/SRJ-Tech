@@ -6,8 +6,10 @@ import 'package:http/http.dart' as http;
 import '../core/config/api_config.dart';
 import '../models/company.dart';
 import '../models/contact_details.dart';
+import '../models/project_item.dart';
 import '../models/service_item.dart';
 import '../models/site_page.dart';
+import '../models/testimonial_item.dart';
 
 class ApiService {
   ApiService({http.Client? client}) : _client = client ?? http.Client();
@@ -98,6 +100,40 @@ class ApiService {
     final list = jsonDecode(response.body) as List<dynamic>;
     return list
         .map((e) => ServiceItem.fromJson(e as Map<String, dynamic>))
+        .toList()
+      ..sort((a, b) => a.order.compareTo(b.order));
+  }
+
+  Future<List<ProjectItem>> fetchProjects({bool featuredOnly = false}) async {
+    final path =
+        featuredOnly ? '/projects?featured=true' : '/projects';
+    final response = await _get(path);
+    _ensureOk(response);
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list
+        .map((e) => ProjectItem.fromJson(e as Map<String, dynamic>))
+        .toList()
+      ..sort((a, b) => a.order.compareTo(b.order));
+  }
+
+  Future<ProjectItem> fetchProject(String slug) async {
+    final response = await _get('/projects/$slug');
+    _ensureOk(response);
+    return ProjectItem.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<List<TestimonialItem>> fetchTestimonials({
+    bool featuredOnly = false,
+  }) async {
+    final path =
+        featuredOnly ? '/testimonials?featured=true' : '/testimonials';
+    final response = await _get(path);
+    _ensureOk(response);
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list
+        .map((e) => TestimonialItem.fromJson(e as Map<String, dynamic>))
         .toList()
       ..sort((a, b) => a.order.compareTo(b.order));
   }
