@@ -8,7 +8,6 @@ import '../models/service_item.dart';
 import '../models/site_page.dart';
 import '../services/api_service.dart';
 import '../widgets/effects/glass.dart';
-import '../widgets/effects/parallax.dart';
 import '../widgets/layout.dart';
 
 class ServicesPage extends StatefulWidget {
@@ -83,19 +82,16 @@ class _ServicesPageState extends State<ServicesPage> {
                 ],
                 const SizedBox(height: 48),
                 for (var i = 0; i < data.services.length; i++) ...[
-                  ParallaxLayer(
-                    factor: 0.035 + (i % 2) * 0.02,
-                    child: GlassPanel(
-                      borderRadius: 20,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 22,
-                        vertical: 20,
-                      ),
-                      opacity: 0.09,
-                      child: _ServiceRow(
-                        service: data.services[i],
-                        index: i,
-                      ),
+                  GlassPanel(
+                    borderRadius: 20,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 22,
+                      vertical: 20,
+                    ),
+                    opacity: 0.09,
+                    child: _ServiceRow(
+                      service: data.services[i],
+                      index: i,
                     ),
                   )
                       .animate()

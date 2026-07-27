@@ -19,21 +19,31 @@ class MaxWidth extends StatelessWidget {
   const MaxWidth({
     super.key,
     required this.child,
-    this.maxWidth = 1180,
-    this.padding = const EdgeInsets.symmetric(horizontal: 24),
+    this.maxWidth = 1080,
+    this.padding,
   });
 
   final Widget child;
   final double maxWidth;
-  final EdgeInsetsGeometry padding;
+  final EdgeInsetsGeometry? padding;
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.topCenter,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: maxWidth),
-        child: Padding(padding: padding, child: child),
+    final width = MediaQuery.sizeOf(context).width;
+    final resolvedPadding = padding ??
+        EdgeInsets.symmetric(
+          horizontal: width >= 1200
+              ? 40
+              : (width >= 800 ? 32 : 20),
+        );
+
+    return SizedBox(
+      width: double.infinity,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: maxWidth),
+          child: Padding(padding: resolvedPadding, child: child),
+        ),
       ),
     );
   }

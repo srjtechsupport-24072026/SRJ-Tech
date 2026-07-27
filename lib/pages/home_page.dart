@@ -10,7 +10,6 @@ import '../models/site_page.dart';
 import '../services/api_service.dart';
 import '../widgets/brand_logo.dart';
 import '../widgets/effects/glass.dart';
-import '../widgets/effects/parallax.dart';
 import '../widgets/layout.dart';
 
 class HomePage extends StatefulWidget {
@@ -44,103 +43,52 @@ class _HomePageState extends State<HomePage> {
       future: _future,
       builder: (context, data) {
         final width = MediaQuery.sizeOf(context).width;
-        final heroTitleSize = width >= 900 ? 72.0 : (width >= 600 ? 52.0 : 40.0);
+        final heroTitleSize = width >= 900 ? 58.0 : (width >= 600 ? 46.0 : 36.0);
 
         return Column(
           children: [
-            SizedBox(
-              width: double.infinity,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  ParallaxLayer(
-                    factor: -0.28,
-                    child: Align(
-                      alignment: width >= 900
-                          ? Alignment.centerRight
-                          : Alignment.topCenter,
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          right: width >= 900 ? 24 : 0,
-                          top: width >= 900 ? 8 : 0,
-                        ),
-                        child: _HeroLogo(size: width >= 900 ? 420 : 260),
-                      ),
-                    ),
-                  ),
-                  MaxWidth(
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        0,
-                        width >= 900 ? 72 : 280,
-                        0,
-                        width >= 900 ? 100 : 64,
-                      ),
-                      child: ParallaxLayer(
-                        factor: 0.12,
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                            maxWidth: width >= 900 ? 560 : 820,
+            MaxWidth(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  0,
+                  width >= 900 ? 64 : 40,
+                  0,
+                  width >= 900 ? 88 : 56,
+                ),
+                child: width >= 900
+                    ? Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            flex: 11,
+                            child: _HeroCopy(
+                              tagline: data.company.tagline,
+                              description: data.company.description,
+                              titleSize: heroTitleSize,
+                            ),
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                data.company.tagline,
-                                style: GoogleFonts.syne(
-                                  fontSize: heroTitleSize,
-                                  fontWeight: FontWeight.w700,
-                                  height: 1.02,
-                                  letterSpacing: -1.8,
-                                  color: SrjColors.paper,
-                                ),
-                              )
-                                  .animate()
-                                  .fadeIn(delay: 80.ms, duration: 600.ms)
-                                  .slideY(begin: 0.12, end: 0),
-                              const SizedBox(height: 22),
-                              GlassPanel(
-                                borderRadius: 18,
-                                padding: const EdgeInsets.all(20),
-                                opacity: 0.07,
-                                child: Text(
-                                  data.company.description,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodyLarge
-                                      ?.copyWith(
-                                        fontSize: 18,
-                                        color: SrjColors.mist,
-                                      ),
-                                ),
-                              )
-                                  .animate()
-                                  .fadeIn(delay: 160.ms, duration: 600.ms),
-                              const SizedBox(height: 34),
-                              Wrap(
-                                spacing: 12,
-                                runSpacing: 12,
-                                children: [
-                                  FilledButton(
-                                    onPressed: () => context.go('/contact'),
-                                    child: const Text('Start a project'),
-                                  ),
-                                  OutlinedButton(
-                                    onPressed: () => context.go('/services'),
-                                    child: const Text('Explore services'),
-                                  ),
-                                ],
-                              )
-                                  .animate()
-                                  .fadeIn(delay: 240.ms, duration: 500.ms)
-                                  .slideY(begin: 0.1, end: 0),
-                            ],
+                          const SizedBox(width: 36),
+                          Expanded(
+                            flex: 9,
+                            child: Center(
+                              child: _HeroLogo(
+                                size: width >= 1200 ? 360 : 300,
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
+                      )
+                    : Column(
+                        children: [
+                          _HeroLogo(size: width >= 600 ? 240 : 200),
+                          const SizedBox(height: 28),
+                          _HeroCopy(
+                            tagline: data.company.tagline,
+                            description: data.company.description,
+                            titleSize: heroTitleSize,
+                          ),
+                        ],
                       ),
-                    ),
-                  ),
-                ],
               ),
             ),
             MaxWidth(
@@ -185,16 +133,13 @@ class _HomePageState extends State<HomePage> {
                                 width: cols == 1
                                     ? constraints.maxWidth
                                     : (constraints.maxWidth - 20) / 2,
-                                child: ParallaxLayer(
-                                  factor: 0.04 + (i % 2) * 0.03,
-                                  child: _ServicePreview(service: services[i])
-                                      .animate()
-                                      .fadeIn(
-                                        delay: (80 * i).ms,
-                                        duration: 450.ms,
-                                      )
-                                      .slideY(begin: 0.08, end: 0),
-                                ),
+                                child: _ServicePreview(service: services[i])
+                                    .animate()
+                                    .fadeIn(
+                                      delay: (80 * i).ms,
+                                      duration: 450.ms,
+                                    )
+                                    .slideY(begin: 0.08, end: 0),
                               ),
                           ],
                         );
@@ -222,67 +167,65 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ],
                     const SizedBox(height: 64),
-                    ParallaxLayer(
-                      factor: 0.06,
-                      child: GlassPanel(
-                        borderRadius: 24,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 28,
-                          vertical: 36,
-                        ),
-                        opacity: 0.11,
-                        blur: 24,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Ready to build with SRJ Tech?',
-                              style: GoogleFonts.syne(
-                                fontSize: 30,
-                                fontWeight: FontWeight.w700,
-                                color: SrjColors.paper,
-                              ),
+                    GlassPanel(
+                      borderRadius: 24,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 28,
+                        vertical: 36,
+                      ),
+                      opacity: 0.11,
+                      blur: 24,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Ready to build with SRJ Tech?',
+                            style: GoogleFonts.syne(
+                              fontSize: 30,
+                              fontWeight: FontWeight.w700,
+                              color: SrjColors.paper,
                             ),
-                            const SizedBox(height: 10),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            'Tell us about your product idea and we will help shape the first milestones.',
+                            style: Theme.of(context).textTheme.bodyLarge,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            data.company.email,
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: SrjColors.accent,
+                                ),
+                          ),
+                          if (data.company.phone.isNotEmpty) ...[
+                            const SizedBox(height: 4),
                             Text(
-                              'Tell us about your product idea and we will help shape the first milestones.',
-                              style: Theme.of(context).textTheme.bodyLarge,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              data.company.email,
+                              data.company.phone,
                               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    color: SrjColors.accent,
+                                    color: SrjColors.lime,
                                   ),
                             ),
-                            if (data.company.phone.isNotEmpty) ...[
-                              const SizedBox(height: 4),
-                              Text(
-                                data.company.phone,
-                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                      color: SrjColors.lime,
-                                    ),
+                          ],
+                          const SizedBox(height: 22),
+                          Wrap(
+                            spacing: 12,
+                            runSpacing: 12,
+                            children: [
+                              FilledButton(
+                                onPressed: () => context.go('/contact'),
+                                child: const Text('Contact us'),
+                              ),
+                              OutlinedButton(
+                                onPressed: () => context.go('/contact'),
+                                child: const Text('View contact details'),
                               ),
                             ],
-                            const SizedBox(height: 22),
-                            Wrap(
-                              spacing: 12,
-                              runSpacing: 12,
-                              children: [
-                                FilledButton(
-                                  onPressed: () => context.go('/contact'),
-                                  child: const Text('Contact us'),
-                                ),
-                                OutlinedButton(
-                                  onPressed: () => context.go('/contact'),
-                                  child: const Text('View contact details'),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
+                    const SizedBox(height: 24),
                   ],
                 ),
               ),
@@ -304,6 +247,71 @@ class _HomeData {
   final Company company;
   final SitePage page;
   final List<ServiceItem> services;
+}
+
+class _HeroCopy extends StatelessWidget {
+  const _HeroCopy({
+    required this.tagline,
+    required this.description,
+    required this.titleSize,
+  });
+
+  final String tagline;
+  final String description;
+  final double titleSize;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          tagline,
+          style: GoogleFonts.syne(
+            fontSize: titleSize,
+            fontWeight: FontWeight.w700,
+            height: 1.02,
+            letterSpacing: -1.8,
+            color: SrjColors.paper,
+          ),
+        )
+            .animate()
+            .fadeIn(delay: 80.ms, duration: 600.ms)
+            .slideY(begin: 0.12, end: 0),
+        const SizedBox(height: 22),
+        GlassPanel(
+          borderRadius: 18,
+          padding: const EdgeInsets.all(20),
+          opacity: 0.07,
+          child: Text(
+            description,
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  fontSize: 18,
+                  color: SrjColors.mist,
+                ),
+          ),
+        ).animate().fadeIn(delay: 160.ms, duration: 600.ms),
+        const SizedBox(height: 34),
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            FilledButton(
+              onPressed: () => context.go('/contact'),
+              child: const Text('Start a project'),
+            ),
+            OutlinedButton(
+              onPressed: () => context.go('/services'),
+              child: const Text('Explore services'),
+            ),
+          ],
+        )
+            .animate()
+            .fadeIn(delay: 240.ms, duration: 500.ms)
+            .slideY(begin: 0.1, end: 0),
+      ],
+    );
+  }
 }
 
 class _ServicePreview extends StatelessWidget {

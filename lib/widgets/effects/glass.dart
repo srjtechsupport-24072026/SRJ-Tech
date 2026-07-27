@@ -97,7 +97,14 @@ class GlassBar extends StatelessWidget {
               ],
             ),
           ),
-          child: SizedBox(height: height, child: child),
+          child: SizedBox(
+            height: height,
+            width: double.infinity,
+            child: Align(
+              alignment: Alignment.center,
+              child: child,
+            ),
+          ),
         ),
       ),
     );

@@ -73,6 +73,7 @@ class _SiteShellState extends State<SiteShell> {
                 SelectionArea(
                   child: CustomScrollView(
                     controller: _scrollController,
+                    clipBehavior: Clip.none,
                     physics: const BouncingScrollPhysics(
                       parent: AlwaysScrollableScrollPhysics(),
                     ),
@@ -80,8 +81,18 @@ class _SiteShellState extends State<SiteShell> {
                       const SliverToBoxAdapter(
                         child: SizedBox(height: _headerHeight),
                       ),
-                      SliverToBoxAdapter(child: widget.child),
-                      SliverToBoxAdapter(child: SiteFooter(company: company)),
+                      SliverToBoxAdapter(
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: widget.child,
+                        ),
+                      ),
+                      SliverToBoxAdapter(
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: SiteFooter(company: company),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -274,9 +285,8 @@ class SiteFooter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 48, 24, 40),
+      padding: const EdgeInsets.fromLTRB(0, 48, 0, 40),
       child: MaxWidth(
-        padding: EdgeInsets.zero,
         child: GlassPanel(
           borderRadius: 28,
           padding: const EdgeInsets.fromLTRB(28, 40, 28, 32),

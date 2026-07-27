@@ -6,7 +6,6 @@ import '../core/theme/app_theme.dart';
 import '../models/site_page.dart';
 import '../services/api_service.dart';
 import '../widgets/effects/glass.dart';
-import '../widgets/effects/parallax.dart';
 import '../widgets/layout.dart';
 
 class AboutPage extends StatefulWidget {
@@ -63,16 +62,13 @@ class _AboutPageState extends State<AboutPage> {
                 const SoftDivider(),
                 const SizedBox(height: 40),
                 for (var i = 0; i < page.sections.length; i++) ...[
-                  ParallaxLayer(
-                    factor: 0.03 + (i * 0.015),
-                    child: GlassPanel(
-                      borderRadius: 20,
-                      padding: const EdgeInsets.all(24),
-                      opacity: 0.08,
-                      child: _AboutSection(
-                        section: page.sections[i],
-                        index: i,
-                      ),
+                  GlassPanel(
+                    borderRadius: 20,
+                    padding: const EdgeInsets.all(24),
+                    opacity: 0.08,
+                    child: _AboutSection(
+                      section: page.sections[i],
+                      index: i,
                     ),
                   )
                       .animate()
