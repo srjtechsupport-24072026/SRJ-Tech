@@ -186,9 +186,9 @@ async function seed() {
     {
       quote:
         'Solid engineering with a product eye. They cared about maintainability as much as the first release.',
-      authorName: 'Neha Krishnan',
-      authorRole: 'COO',
-      companyName: 'Northline Labs',
+      authorName: 'Sibin Babu',
+      authorRole: 'Software Developer',
+      companyName: '',
       rating: 5,
       order: 1,
       featured: true,
