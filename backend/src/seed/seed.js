@@ -185,34 +185,12 @@ async function seed() {
   await Testimonial.insertMany([
     {
       quote:
-        'SRJ Tech turned a messy set of ideas into a product we could actually ship. Communication stayed clear and the delivery quality was excellent.',
-      authorName: 'Ananya Menon',
-      authorRole: 'Founder',
-      companyName: 'FolksShop',
-      rating: 5,
-      order: 1,
-      featured: true,
-      published: true,
-    },
-    {
-      quote:
-        'The admin suite made our clinic day much calmer. Appointments, staff, and follow-ups finally live in one place.',
-      authorName: 'Dr. Rahul Nair',
-      authorRole: 'Clinic Director',
-      companyName: 'SmileCare Dental',
-      rating: 5,
-      order: 2,
-      featured: true,
-      published: true,
-    },
-    {
-      quote:
         'Solid engineering with a product eye. They cared about maintainability as much as the first release.',
       authorName: 'Neha Krishnan',
       authorRole: 'COO',
       companyName: 'Northline Labs',
       rating: 5,
-      order: 3,
+      order: 1,
       featured: true,
       published: true,
     },
